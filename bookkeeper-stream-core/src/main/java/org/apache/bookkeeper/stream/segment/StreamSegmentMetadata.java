@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.bookkeeper.stream.metadata;
+package org.apache.bookkeeper.stream.segment;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;

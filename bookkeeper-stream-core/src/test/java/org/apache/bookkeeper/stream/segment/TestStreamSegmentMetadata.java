@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.bookkeeper.stream.metadata;
+package org.apache.bookkeeper.stream.segment;
 
 import com.google.common.base.Optional;
 import org.apache.bookkeeper.stream.SSN;
@@ -24,12 +24,13 @@ import org.apache.bookkeeper.stream.exceptions.MetadataException;
 import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat;
 import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.State;
 import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.TruncationState;
+import org.apache.bookkeeper.stream.segment.StreamSegmentMetadata;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
 
 /**
- * Test Case for {@link org.apache.bookkeeper.stream.metadata.StreamSegmentMetadata}
+ * Test Case for {@link org.apache.bookkeeper.stream.segment.StreamSegmentMetadata}
  */
 public class TestStreamSegmentMetadata {
 

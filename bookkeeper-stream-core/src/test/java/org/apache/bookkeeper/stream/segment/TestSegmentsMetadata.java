@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.bookkeeper.stream.metadata;
+package org.apache.bookkeeper.stream.segment;
 
 import org.apache.bookkeeper.stream.exceptions.MetadataException;
 import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat;
@@ -25,7 +25,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Test Case for {@link org.apache.bookkeeper.stream.metadata.SegmentsMetadata}
+ * Test Case for {@link org.apache.bookkeeper.stream.segment.SegmentsMetadata}
  */
 public class TestSegmentsMetadata {
 

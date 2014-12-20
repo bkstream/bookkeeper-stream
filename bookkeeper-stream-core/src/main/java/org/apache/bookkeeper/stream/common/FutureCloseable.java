@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.bookkeeper.stream;
+package org.apache.bookkeeper.stream.common;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
