@@ -36,6 +36,8 @@ public final class SSN implements Comparable<SSN> {
     private static final byte CUR_VERSION = VERSION1;
     private static final int LENGTH = (Long.SIZE * 3 / Byte.SIZE) + 1;
 
+    public static final SSN INVALID_SSN = of(-1L, -1L, -1L);
+
     public static SSN of(long segmentId, long entryId, long slotId) {
         return new SSN(segmentId, entryId, slotId);
     }

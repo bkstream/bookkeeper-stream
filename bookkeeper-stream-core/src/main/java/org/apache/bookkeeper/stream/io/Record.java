@@ -18,76 +18,103 @@
  */
 package org.apache.bookkeeper.stream.io;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import org.apache.bookkeeper.stream.SSN;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Record represents an entity inside a stream.
  */
 public class Record {
 
-    // record type
-    private static final int FLAG_TYPE_MASK         = 0xfffffffc;
-    private static final int FLAG_USER_RECORD       = 0x0;
-    private static final int FLAG_COMMIT_RECORD     = 0x1;
+    private static final int RECORD_HEADER_SIZE =
+            (Long.SIZE + Integer.SIZE) / Byte.SIZE;
 
+    /**
+     * Create a builder to build record.
+     *
+     * @return record builder.
+     */
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+    /**
+     * Builder to build record.
+     */
     public static class Builder {
 
         private long    _rid;
-        private int     _pos;
-        private int     _flags;
         private byte[]  _data;
+        private SSN     _ssn;
 
         private Builder() {
             _rid    = -1L;
-            _pos    = -1;
-            _flags  = 0;
             _data   = null;
+            _ssn    = SSN.INVALID_SSN;
         }
 
-        private Builder(Record record) {
-            _rid    = record.rid;
-            _pos    = record.pos;
-            _flags  = record.flags;
-            _data   = record.data;
-        }
-
+        /**
+         * Set application-specific record id for the record.
+         *
+         * @param recordId
+         *          application specific record id
+         * @return record builder
+         */
         public Builder setRecordId(long recordId) {
             this._rid = recordId;
             return this;
         }
 
-        public Builder setPos(int pos) {
-            this._pos = pos;
-            return this;
-        }
-
+        /**
+         * Set data as the record payload.
+         *
+         * @param data
+         *          record payload.
+         * @return record builder.
+         */
         public Builder setData(byte[] data) {
             this._data = data;
             return this;
         }
 
-        public Builder asUserRecord() {
-            return asRecord(FLAG_USER_RECORD);
+        /**
+         * Set system-generated ssn.
+         *
+         * @param ssn
+         *          system generated ssn.
+         * @return record builder.
+         */
+        public Builder setSSN(SSN ssn) {
+            this._ssn = ssn;
+            return this;
         }
 
-        private Builder asRecord(int type) {
-            this._flags = (this._flags & FLAG_TYPE_MASK) | type;
-            return this;
+        /**
+         * Build the record.
+         *
+         * @return build the record.
+         */
+        public Record build() {
+            Preconditions.checkNotNull(_data, "No data provided for the record");
+            Preconditions.checkNotNull(_ssn, "Null SSN provided for the record");
+            return new Record(_ssn, _rid, _data);
         }
 
     }
 
     private final long      rid;
-    private final int       pos;
-    private final int       flags;
     private final byte[]    data;
     private final SSN ssn;
 
-    protected Record(SSN ssn, long rid, int pos, int flags, byte[] data) {
+    protected Record(SSN ssn, long rid, byte[] data) {
         this.ssn = ssn;
         this.rid = rid;
-        this.pos = pos;
-        this.flags = flags;
         this.data = data;
     }
 
@@ -116,6 +143,87 @@ public class Record {
      */
     public byte[] getData() {
         return this.data;
+    }
+
+    /**
+     * Return the persistence size of the record.
+     *
+     * @return persistence size of the record.
+     */
+    int getPersistenceSize() {
+        return RECORD_HEADER_SIZE + data.length;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("record(ssn = ").append(ssn)
+                .append(", rid = ").append(rid)
+                .append(", len = ").append(data.length)
+                .append(")");
+        return sb.toString();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(ssn, rid, data);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Record)) {
+            return false;
+        }
+        Record that = (Record) obj;
+        return Objects.equal(this.ssn, that.ssn) &&
+                Objects.equal(this.rid, that.rid) &&
+                Arrays.equals(this.data, that.data);
+    }
+
+    /**
+     * Whether the record equals other <i>obj</i>, without comparing ssn.
+     *
+     * @param that
+     *          other record
+     * @return true if record is same in content
+     */
+    public boolean isSameContent(Record that) {
+        return Objects.equal(this.ssn, that.ssn) &&
+                Objects.equal(this.rid, that.rid);
+    }
+
+    /**
+     * Write the record to stream <i>out</i>.
+     *
+     * @param out
+     *          output stream.
+     * @throws IOException
+     */
+    public void write(DataOutputStream out) throws IOException {
+        // write record id
+        out.writeLong(rid);
+        // write data length
+        out.writeInt(data.length);
+        // write data
+        out.write(data);
+    }
+
+    /**
+     * Read the record from stream <i>in</i>.
+     *
+     * @param in
+     *          input stream.
+     * @return record builder.
+     * @throws IOException
+     */
+    static Builder read(DataInputStream in) throws IOException {
+        Builder recordBuilder = newBuilder();
+        recordBuilder.setRecordId(in.readLong());
+        int len = in.readInt();
+        byte[] data = new byte[len];
+        in.readFully(data);
+        recordBuilder.setData(data);
+        return recordBuilder;
     }
 
 }
