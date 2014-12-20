@@ -20,6 +20,8 @@ package org.apache.bookkeeper.stream;
 
 import com.google.common.annotations.Beta;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.bookkeeper.stream.common.FutureCloseable;
+import org.apache.bookkeeper.stream.io.Record;
 
 import java.util.List;
 
