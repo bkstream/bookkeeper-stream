@@ -46,10 +46,15 @@ message StreamSegmentMetadataFormat {
         FULL = 3;
     }
     optional TruncationState truncationState = 7 [default = NONE];
+    optional SSN truncatedSSN = 8;
 
-    optional int64 cTime = 8;
-    optional int64 mTime = 9;
-    optional int64 completionTime = 10;
+    optional int64 cTime = 9;
+    optional int64 mTime = 10;
+    optional int64 completionTime = 11;
+}
+
+message StreamSegmentsMetadataFormat {
+    optional int64 maxSegmentId = 1;
 }
 
 /**

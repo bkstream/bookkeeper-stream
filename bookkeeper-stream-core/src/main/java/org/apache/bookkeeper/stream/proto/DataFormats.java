@@ -516,15 +516,20 @@ public final class DataFormats {
     boolean hasTruncationState();
     org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.TruncationState getTruncationState();
     
-    // optional int64 cTime = 8;
+    // optional .SSN truncatedSSN = 8;
+    boolean hasTruncatedSSN();
+    org.apache.bookkeeper.stream.proto.DataFormats.SSN getTruncatedSSN();
+    org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder getTruncatedSSNOrBuilder();
+    
+    // optional int64 cTime = 9;
     boolean hasCTime();
     long getCTime();
     
-    // optional int64 mTime = 9;
+    // optional int64 mTime = 10;
     boolean hasMTime();
     long getMTime();
     
-    // optional int64 completionTime = 10;
+    // optional int64 completionTime = 11;
     boolean hasCompletionTime();
     long getCompletionTime();
   }
@@ -771,31 +776,44 @@ public final class DataFormats {
       return truncationState_;
     }
     
-    // optional int64 cTime = 8;
-    public static final int CTIME_FIELD_NUMBER = 8;
+    // optional .SSN truncatedSSN = 8;
+    public static final int TRUNCATEDSSN_FIELD_NUMBER = 8;
+    private org.apache.bookkeeper.stream.proto.DataFormats.SSN truncatedSSN_;
+    public boolean hasTruncatedSSN() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    public org.apache.bookkeeper.stream.proto.DataFormats.SSN getTruncatedSSN() {
+      return truncatedSSN_;
+    }
+    public org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder getTruncatedSSNOrBuilder() {
+      return truncatedSSN_;
+    }
+    
+    // optional int64 cTime = 9;
+    public static final int CTIME_FIELD_NUMBER = 9;
     private long cTime_;
     public boolean hasCTime() {
-      return ((bitField0_ & 0x00000080) == 0x00000080);
+      return ((bitField0_ & 0x00000100) == 0x00000100);
     }
     public long getCTime() {
       return cTime_;
     }
     
-    // optional int64 mTime = 9;
-    public static final int MTIME_FIELD_NUMBER = 9;
+    // optional int64 mTime = 10;
+    public static final int MTIME_FIELD_NUMBER = 10;
     private long mTime_;
     public boolean hasMTime() {
-      return ((bitField0_ & 0x00000100) == 0x00000100);
+      return ((bitField0_ & 0x00000200) == 0x00000200);
     }
     public long getMTime() {
       return mTime_;
     }
     
-    // optional int64 completionTime = 10;
-    public static final int COMPLETIONTIME_FIELD_NUMBER = 10;
+    // optional int64 completionTime = 11;
+    public static final int COMPLETIONTIME_FIELD_NUMBER = 11;
     private long completionTime_;
     public boolean hasCompletionTime() {
-      return ((bitField0_ & 0x00000200) == 0x00000200);
+      return ((bitField0_ & 0x00000400) == 0x00000400);
     }
     public long getCompletionTime() {
       return completionTime_;
@@ -809,6 +827,7 @@ public final class DataFormats {
       recordCount_ = 0L;
       state_ = org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.State.INPROGRESS;
       truncationState_ = org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.TruncationState.NONE;
+      truncatedSSN_ = org.apache.bookkeeper.stream.proto.DataFormats.SSN.getDefaultInstance();
       cTime_ = 0L;
       mTime_ = 0L;
       completionTime_ = 0L;
@@ -824,6 +843,12 @@ public final class DataFormats {
       }
       if (hasLastSSN()) {
         if (!getLastSSN().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasTruncatedSSN()) {
+        if (!getTruncatedSSN().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -857,13 +882,16 @@ public final class DataFormats {
         output.writeEnum(7, truncationState_.getNumber());
       }
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
-        output.writeInt64(8, cTime_);
+        output.writeMessage(8, truncatedSSN_);
       }
       if (((bitField0_ & 0x00000100) == 0x00000100)) {
-        output.writeInt64(9, mTime_);
+        output.writeInt64(9, cTime_);
       }
       if (((bitField0_ & 0x00000200) == 0x00000200)) {
-        output.writeInt64(10, completionTime_);
+        output.writeInt64(10, mTime_);
+      }
+      if (((bitField0_ & 0x00000400) == 0x00000400)) {
+        output.writeInt64(11, completionTime_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -904,15 +932,19 @@ public final class DataFormats {
       }
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(8, cTime_);
+          .computeMessageSize(8, truncatedSSN_);
       }
       if (((bitField0_ & 0x00000100) == 0x00000100)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(9, mTime_);
+          .computeInt64Size(9, cTime_);
       }
       if (((bitField0_ & 0x00000200) == 0x00000200)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(10, completionTime_);
+          .computeInt64Size(10, mTime_);
+      }
+      if (((bitField0_ & 0x00000400) == 0x00000400)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(11, completionTime_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1031,6 +1063,7 @@ public final class DataFormats {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getLastSSNFieldBuilder();
+          getTruncatedSSNFieldBuilder();
         }
       }
       private static Builder create() {
@@ -1057,12 +1090,18 @@ public final class DataFormats {
         bitField0_ = (bitField0_ & ~0x00000020);
         truncationState_ = org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.TruncationState.NONE;
         bitField0_ = (bitField0_ & ~0x00000040);
-        cTime_ = 0L;
+        if (truncatedSSNBuilder_ == null) {
+          truncatedSSN_ = org.apache.bookkeeper.stream.proto.DataFormats.SSN.getDefaultInstance();
+        } else {
+          truncatedSSNBuilder_.clear();
+        }
         bitField0_ = (bitField0_ & ~0x00000080);
-        mTime_ = 0L;
+        cTime_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000100);
-        completionTime_ = 0L;
+        mTime_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000200);
+        completionTime_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000400);
         return this;
       }
       
@@ -1136,13 +1175,21 @@ public final class DataFormats {
         if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
           to_bitField0_ |= 0x00000080;
         }
-        result.cTime_ = cTime_;
+        if (truncatedSSNBuilder_ == null) {
+          result.truncatedSSN_ = truncatedSSN_;
+        } else {
+          result.truncatedSSN_ = truncatedSSNBuilder_.build();
+        }
         if (((from_bitField0_ & 0x00000100) == 0x00000100)) {
           to_bitField0_ |= 0x00000100;
         }
-        result.mTime_ = mTime_;
+        result.cTime_ = cTime_;
         if (((from_bitField0_ & 0x00000200) == 0x00000200)) {
           to_bitField0_ |= 0x00000200;
+        }
+        result.mTime_ = mTime_;
+        if (((from_bitField0_ & 0x00000400) == 0x00000400)) {
+          to_bitField0_ |= 0x00000400;
         }
         result.completionTime_ = completionTime_;
         result.bitField0_ = to_bitField0_;
@@ -1182,6 +1229,9 @@ public final class DataFormats {
         if (other.hasTruncationState()) {
           setTruncationState(other.getTruncationState());
         }
+        if (other.hasTruncatedSSN()) {
+          mergeTruncatedSSN(other.getTruncatedSSN());
+        }
         if (other.hasCTime()) {
           setCTime(other.getCTime());
         }
@@ -1202,6 +1252,12 @@ public final class DataFormats {
         }
         if (hasLastSSN()) {
           if (!getLastSSN().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasTruncatedSSN()) {
+          if (!getTruncatedSSN().isInitialized()) {
             
             return false;
           }
@@ -1283,18 +1339,27 @@ public final class DataFormats {
               }
               break;
             }
-            case 64: {
-              bitField0_ |= 0x00000080;
-              cTime_ = input.readInt64();
+            case 66: {
+              org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder subBuilder = org.apache.bookkeeper.stream.proto.DataFormats.SSN.newBuilder();
+              if (hasTruncatedSSN()) {
+                subBuilder.mergeFrom(getTruncatedSSN());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setTruncatedSSN(subBuilder.buildPartial());
               break;
             }
             case 72: {
               bitField0_ |= 0x00000100;
-              mTime_ = input.readInt64();
+              cTime_ = input.readInt64();
               break;
             }
             case 80: {
               bitField0_ |= 0x00000200;
+              mTime_ = input.readInt64();
+              break;
+            }
+            case 88: {
+              bitField0_ |= 0x00000400;
               completionTime_ = input.readInt64();
               break;
             }
@@ -1526,64 +1591,154 @@ public final class DataFormats {
         return this;
       }
       
-      // optional int64 cTime = 8;
+      // optional .SSN truncatedSSN = 8;
+      private org.apache.bookkeeper.stream.proto.DataFormats.SSN truncatedSSN_ = org.apache.bookkeeper.stream.proto.DataFormats.SSN.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.stream.proto.DataFormats.SSN, org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder, org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder> truncatedSSNBuilder_;
+      public boolean hasTruncatedSSN() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      public org.apache.bookkeeper.stream.proto.DataFormats.SSN getTruncatedSSN() {
+        if (truncatedSSNBuilder_ == null) {
+          return truncatedSSN_;
+        } else {
+          return truncatedSSNBuilder_.getMessage();
+        }
+      }
+      public Builder setTruncatedSSN(org.apache.bookkeeper.stream.proto.DataFormats.SSN value) {
+        if (truncatedSSNBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          truncatedSSN_ = value;
+          onChanged();
+        } else {
+          truncatedSSNBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      public Builder setTruncatedSSN(
+          org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder builderForValue) {
+        if (truncatedSSNBuilder_ == null) {
+          truncatedSSN_ = builderForValue.build();
+          onChanged();
+        } else {
+          truncatedSSNBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      public Builder mergeTruncatedSSN(org.apache.bookkeeper.stream.proto.DataFormats.SSN value) {
+        if (truncatedSSNBuilder_ == null) {
+          if (((bitField0_ & 0x00000080) == 0x00000080) &&
+              truncatedSSN_ != org.apache.bookkeeper.stream.proto.DataFormats.SSN.getDefaultInstance()) {
+            truncatedSSN_ =
+              org.apache.bookkeeper.stream.proto.DataFormats.SSN.newBuilder(truncatedSSN_).mergeFrom(value).buildPartial();
+          } else {
+            truncatedSSN_ = value;
+          }
+          onChanged();
+        } else {
+          truncatedSSNBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      public Builder clearTruncatedSSN() {
+        if (truncatedSSNBuilder_ == null) {
+          truncatedSSN_ = org.apache.bookkeeper.stream.proto.DataFormats.SSN.getDefaultInstance();
+          onChanged();
+        } else {
+          truncatedSSNBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000080);
+        return this;
+      }
+      public org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder getTruncatedSSNBuilder() {
+        bitField0_ |= 0x00000080;
+        onChanged();
+        return getTruncatedSSNFieldBuilder().getBuilder();
+      }
+      public org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder getTruncatedSSNOrBuilder() {
+        if (truncatedSSNBuilder_ != null) {
+          return truncatedSSNBuilder_.getMessageOrBuilder();
+        } else {
+          return truncatedSSN_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.stream.proto.DataFormats.SSN, org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder, org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder> 
+          getTruncatedSSNFieldBuilder() {
+        if (truncatedSSNBuilder_ == null) {
+          truncatedSSNBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.bookkeeper.stream.proto.DataFormats.SSN, org.apache.bookkeeper.stream.proto.DataFormats.SSN.Builder, org.apache.bookkeeper.stream.proto.DataFormats.SSNOrBuilder>(
+                  truncatedSSN_,
+                  getParentForChildren(),
+                  isClean());
+          truncatedSSN_ = null;
+        }
+        return truncatedSSNBuilder_;
+      }
+      
+      // optional int64 cTime = 9;
       private long cTime_ ;
       public boolean hasCTime() {
-        return ((bitField0_ & 0x00000080) == 0x00000080);
+        return ((bitField0_ & 0x00000100) == 0x00000100);
       }
       public long getCTime() {
         return cTime_;
       }
       public Builder setCTime(long value) {
-        bitField0_ |= 0x00000080;
+        bitField0_ |= 0x00000100;
         cTime_ = value;
         onChanged();
         return this;
       }
       public Builder clearCTime() {
-        bitField0_ = (bitField0_ & ~0x00000080);
+        bitField0_ = (bitField0_ & ~0x00000100);
         cTime_ = 0L;
         onChanged();
         return this;
       }
       
-      // optional int64 mTime = 9;
+      // optional int64 mTime = 10;
       private long mTime_ ;
       public boolean hasMTime() {
-        return ((bitField0_ & 0x00000100) == 0x00000100);
+        return ((bitField0_ & 0x00000200) == 0x00000200);
       }
       public long getMTime() {
         return mTime_;
       }
       public Builder setMTime(long value) {
-        bitField0_ |= 0x00000100;
+        bitField0_ |= 0x00000200;
         mTime_ = value;
         onChanged();
         return this;
       }
       public Builder clearMTime() {
-        bitField0_ = (bitField0_ & ~0x00000100);
+        bitField0_ = (bitField0_ & ~0x00000200);
         mTime_ = 0L;
         onChanged();
         return this;
       }
       
-      // optional int64 completionTime = 10;
+      // optional int64 completionTime = 11;
       private long completionTime_ ;
       public boolean hasCompletionTime() {
-        return ((bitField0_ & 0x00000200) == 0x00000200);
+        return ((bitField0_ & 0x00000400) == 0x00000400);
       }
       public long getCompletionTime() {
         return completionTime_;
       }
       public Builder setCompletionTime(long value) {
-        bitField0_ |= 0x00000200;
+        bitField0_ |= 0x00000400;
         completionTime_ = value;
         onChanged();
         return this;
       }
       public Builder clearCompletionTime() {
-        bitField0_ = (bitField0_ & ~0x00000200);
+        bitField0_ = (bitField0_ & ~0x00000400);
         completionTime_ = 0L;
         onChanged();
         return this;
@@ -1598,6 +1753,344 @@ public final class DataFormats {
     }
     
     // @@protoc_insertion_point(class_scope:StreamSegmentMetadataFormat)
+  }
+  
+  public interface StreamSegmentsMetadataFormatOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional int64 maxSegmentId = 1;
+    boolean hasMaxSegmentId();
+    long getMaxSegmentId();
+  }
+  public static final class StreamSegmentsMetadataFormat extends
+      com.google.protobuf.GeneratedMessage
+      implements StreamSegmentsMetadataFormatOrBuilder {
+    // Use StreamSegmentsMetadataFormat.newBuilder() to construct.
+    private StreamSegmentsMetadataFormat(Builder builder) {
+      super(builder);
+    }
+    private StreamSegmentsMetadataFormat(boolean noInit) {}
+    
+    private static final StreamSegmentsMetadataFormat defaultInstance;
+    public static StreamSegmentsMetadataFormat getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public StreamSegmentsMetadataFormat getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.stream.proto.DataFormats.internal_static_StreamSegmentsMetadataFormat_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.stream.proto.DataFormats.internal_static_StreamSegmentsMetadataFormat_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional int64 maxSegmentId = 1;
+    public static final int MAXSEGMENTID_FIELD_NUMBER = 1;
+    private long maxSegmentId_;
+    public boolean hasMaxSegmentId() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public long getMaxSegmentId() {
+      return maxSegmentId_;
+    }
+    
+    private void initFields() {
+      maxSegmentId_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt64(1, maxSegmentId_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(1, maxSegmentId_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormatOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.stream.proto.DataFormats.internal_static_StreamSegmentsMetadataFormat_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.stream.proto.DataFormats.internal_static_StreamSegmentsMetadataFormat_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        maxSegmentId_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat getDefaultInstanceForType() {
+        return org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat build() {
+        org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat buildPartial() {
+        org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat result = new org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.maxSegmentId_ = maxSegmentId_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat) {
+          return mergeFrom((org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat other) {
+        if (other == org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.getDefaultInstance()) return this;
+        if (other.hasMaxSegmentId()) {
+          setMaxSegmentId(other.getMaxSegmentId());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              maxSegmentId_ = input.readInt64();
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional int64 maxSegmentId = 1;
+      private long maxSegmentId_ ;
+      public boolean hasMaxSegmentId() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public long getMaxSegmentId() {
+        return maxSegmentId_;
+      }
+      public Builder setMaxSegmentId(long value) {
+        bitField0_ |= 0x00000001;
+        maxSegmentId_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearMaxSegmentId() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        maxSegmentId_ = 0L;
+        onChanged();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:StreamSegmentsMetadataFormat)
+    }
+    
+    static {
+      defaultInstance = new StreamSegmentsMetadataFormat(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:StreamSegmentsMetadataFormat)
   }
   
   public interface BKStreamFactoryMetadataFormatOrBuilder
@@ -2730,6 +3223,11 @@ public final class DataFormats {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_StreamSegmentMetadataFormat_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_StreamSegmentsMetadataFormat_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_StreamSegmentsMetadataFormat_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_BKStreamFactoryMetadataFormat_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -2750,24 +3248,26 @@ public final class DataFormats {
     java.lang.String[] descriptorData = {
       "\n src/main/proto/DataFormats.proto\"9\n\003SS" +
       "N\022\021\n\tsegmentId\030\001 \002(\003\022\017\n\007entryId\030\002 \002(\003\022\016\n" +
-      "\006slotId\030\003 \002(\003\"\235\003\n\033StreamSegmentMetadataF" +
+      "\006slotId\030\003 \002(\003\"\271\003\n\033StreamSegmentMetadataF" +
       "ormat\022\017\n\007version\030\001 \002(\005\022\021\n\tsegmentId\030\002 \001(" +
       "\003\022\025\n\007lastSSN\030\003 \001(\0132\004.SSN\022\020\n\010ledgerId\030\004 \001" +
       "(\003\022\023\n\013recordCount\030\005 \001(\003\022=\n\005state\030\006 \001(\0162\"" +
       ".StreamSegmentMetadataFormat.State:\nINPR" +
       "OGRESS\022K\n\017truncationState\030\007 \001(\0162,.Stream" +
       "SegmentMetadataFormat.TruncationState:\004N" +
-      "ONE\022\r\n\005cTime\030\010 \001(\003\022\r\n\005mTime\030\t \001(\003\022\026\n\016com",
-      "pletionTime\030\n \001(\003\"&\n\005State\022\016\n\nINPROGRESS" +
-      "\020\001\022\r\n\tCOMPLETED\020\002\"2\n\017TruncationState\022\010\n\004" +
-      "NONE\020\001\022\013\n\007PARTIAL\020\002\022\010\n\004FULL\020\003\"_\n\035BKStrea" +
-      "mFactoryMetadataFormat\022\022\n\nsZkServers\030\001 \001" +
-      "(\t\022\023\n\013bkZkServers\030\002 \001(\t\022\025\n\rbkLedgersPath" +
-      "\030\003 \001(\t\"\224\001\n\033StreamFactoryMetadataFormat\0223" +
-      "\n\004type\030\001 \001(\0162!.StreamFactoryMetadataForm" +
-      "at.Type:\002BK\0220\n\010bkFormat\030\002 \001(\0132\036.BKStream" +
-      "FactoryMetadataFormat\"\016\n\004Type\022\006\n\002BK\020\001B&\n" +
-      "\"org.apache.bookkeeper.stream.protoH\001"
+      "ONE\022\032\n\014truncatedSSN\030\010 \001(\0132\004.SSN\022\r\n\005cTime",
+      "\030\t \001(\003\022\r\n\005mTime\030\n \001(\003\022\026\n\016completionTime\030" +
+      "\013 \001(\003\"&\n\005State\022\016\n\nINPROGRESS\020\001\022\r\n\tCOMPLE" +
+      "TED\020\002\"2\n\017TruncationState\022\010\n\004NONE\020\001\022\013\n\007PA" +
+      "RTIAL\020\002\022\010\n\004FULL\020\003\"4\n\034StreamSegmentsMetad" +
+      "ataFormat\022\024\n\014maxSegmentId\030\001 \001(\003\"_\n\035BKStr" +
+      "eamFactoryMetadataFormat\022\022\n\nsZkServers\030\001" +
+      " \001(\t\022\023\n\013bkZkServers\030\002 \001(\t\022\025\n\rbkLedgersPa" +
+      "th\030\003 \001(\t\"\224\001\n\033StreamFactoryMetadataFormat" +
+      "\0223\n\004type\030\001 \001(\0162!.StreamFactoryMetadataFo" +
+      "rmat.Type:\002BK\0220\n\010bkFormat\030\002 \001(\0132\036.BKStre",
+      "amFactoryMetadataFormat\"\016\n\004Type\022\006\n\002BK\020\001B" +
+      "&\n\"org.apache.bookkeeper.stream.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2787,11 +3287,19 @@ public final class DataFormats {
           internal_static_StreamSegmentMetadataFormat_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_StreamSegmentMetadataFormat_descriptor,
-              new java.lang.String[] { "Version", "SegmentId", "LastSSN", "LedgerId", "RecordCount", "State", "TruncationState", "CTime", "MTime", "CompletionTime", },
+              new java.lang.String[] { "Version", "SegmentId", "LastSSN", "LedgerId", "RecordCount", "State", "TruncationState", "TruncatedSSN", "CTime", "MTime", "CompletionTime", },
               org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.class,
               org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.Builder.class);
-          internal_static_BKStreamFactoryMetadataFormat_descriptor =
+          internal_static_StreamSegmentsMetadataFormat_descriptor =
             getDescriptor().getMessageTypes().get(2);
+          internal_static_StreamSegmentsMetadataFormat_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_StreamSegmentsMetadataFormat_descriptor,
+              new java.lang.String[] { "MaxSegmentId", },
+              org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.class,
+              org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentsMetadataFormat.Builder.class);
+          internal_static_BKStreamFactoryMetadataFormat_descriptor =
+            getDescriptor().getMessageTypes().get(3);
           internal_static_BKStreamFactoryMetadataFormat_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_BKStreamFactoryMetadataFormat_descriptor,
@@ -2799,7 +3307,7 @@ public final class DataFormats {
               org.apache.bookkeeper.stream.proto.DataFormats.BKStreamFactoryMetadataFormat.class,
               org.apache.bookkeeper.stream.proto.DataFormats.BKStreamFactoryMetadataFormat.Builder.class);
           internal_static_StreamFactoryMetadataFormat_descriptor =
-            getDescriptor().getMessageTypes().get(3);
+            getDescriptor().getMessageTypes().get(4);
           internal_static_StreamFactoryMetadataFormat_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_StreamFactoryMetadataFormat_descriptor,

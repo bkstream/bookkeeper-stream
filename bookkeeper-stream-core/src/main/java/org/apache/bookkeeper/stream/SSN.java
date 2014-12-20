@@ -20,9 +20,11 @@ package org.apache.bookkeeper.stream;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import org.apache.bookkeeper.stream.exceptions.InvalidSSNException;
 import org.apache.bookkeeper.stream.proto.DataFormats;
 import org.apache.commons.codec.binary.Base64;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
@@ -32,7 +34,15 @@ public final class SSN implements Comparable<SSN> {
 
     public static final byte VERSION1 = (byte) 1;
     private static final byte CUR_VERSION = VERSION1;
-    private static final int LENGTH = Long.SIZE * 3 / Integer.SIZE + 1;
+    private static final int LENGTH = (Long.SIZE * 3 / Byte.SIZE) + 1;
+
+    public static SSN of(long segmentId, long entryId, long slotId) {
+        return new SSN(segmentId, entryId, slotId);
+    }
+
+    public static SSN of(DataFormats.SSN dfSSN) {
+        return new SSN(dfSSN.getSegmentId(), dfSSN.getEntryId(), dfSSN.getSlotId());
+    }
 
     private final long segmentId;
     private final long entryId;
@@ -52,6 +62,22 @@ public final class SSN implements Comparable<SSN> {
             return (this.entryId < that.entryId) ? -1 : 1;
         } else {
             return (this.slotId < that.slotId) ? -1 : ((this.slotId == that.slotId) ? 0 : 1);
+        }
+    }
+
+    public boolean notGreaterThan(SSN that) {
+        if (this.segmentId < that.segmentId) {
+            return true;
+        } else if (this.segmentId > that.segmentId) {
+            return false;
+        } else {
+            if (this.entryId < that.entryId) {
+                return true;
+            } else if (this.entryId > that.entryId) {
+                return false;
+            } else {
+                return this.slotId <= that.slotId;
+            }
         }
     }
 
@@ -94,13 +120,19 @@ public final class SSN implements Comparable<SSN> {
      * @param data ssn string representation
      * @return ssn instance
      */
-    public static SSN deserialize(String data) {
+    public static SSN deserialize(String data) throws InvalidSSNException {
         byte[] dataBytes = Base64.decodeBase64(data);
         ByteBuffer bb = ByteBuffer.wrap(dataBytes);
         byte version = bb.get();
-        Preconditions.checkArgument(version == CUR_VERSION,
-                "Only support version less than or equal to " + CUR_VERSION);
-        return new SSN(bb.getLong(), bb.getLong(), bb.getLong());
+        if (CUR_VERSION != version) {
+            throw new InvalidSSNException(data, "Only support version not greater than " + CUR_VERSION
+                    + ", but found version " + version);
+        }
+        try {
+            return new SSN(bb.getLong(), bb.getLong(), bb.getLong());
+        } catch (BufferUnderflowException bufe) {
+            throw new InvalidSSNException(data, bufe);
+        }
     }
 
     @Override
@@ -130,4 +162,21 @@ public final class SSN implements Comparable<SSN> {
           .append(", tid=").append(slotId).append(")");
         return sb.toString();
     }
+
+    public static boolean notGreaterThan(DataFormats.SSN ssn1, DataFormats.SSN ssn2) {
+        if (ssn1.getSegmentId() < ssn2.getSegmentId()) {
+            return true;
+        } else if (ssn1.getSegmentId() > ssn2.getSegmentId()) {
+            return false;
+        } else {
+            if (ssn1.getEntryId() < ssn2.getEntryId()) {
+                return true;
+            } else if (ssn1.getEntryId() > ssn2.getEntryId()) {
+                return false;
+            } else {
+                return ssn1.getSlotId() <= ssn2.getSlotId();
+            }
+        }
+    }
+
 }

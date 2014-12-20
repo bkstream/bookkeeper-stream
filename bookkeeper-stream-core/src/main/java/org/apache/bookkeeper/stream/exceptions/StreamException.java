@@ -30,6 +30,9 @@ public abstract class StreamException extends Exception {
         // 2xx: actions were received, accepted and processed successfully
         public static final int SUCCESS = 200;
 
+        // 4xx: invalid actions
+        public static final int INVALID_SSN = 400;
+
         // 6xx:
         // unexpected situation
         public static final int UNEXPECTED = 600;
