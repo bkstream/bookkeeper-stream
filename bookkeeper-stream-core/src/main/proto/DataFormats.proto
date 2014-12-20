@@ -1,0 +1,70 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option java_package = "org.apache.bookkeeper.stream.proto";
+option optimize_for = SPEED;
+
+message SSN {
+    required int64 segmentId = 1;
+    required int64 entryId = 2;
+    required int64 slotId = 3;
+}
+
+/**
+ * Metadata Format for storing stream segment information
+ */
+message StreamSegmentMetadataFormat {
+    required int32 version = 1;
+    optional int64 segmentId = 2;
+    optional SSN   lastSSN = 3;
+    optional int64 ledgerId = 4;
+    optional int64 recordCount = 5;
+
+    enum State {
+        INPROGRESS = 1;
+        COMPLETED = 2;
+    }
+    optional State state = 6 [default = INPROGRESS];
+
+    enum TruncationState {
+        NONE = 1;
+        PARTIAL = 2;
+        FULL = 3;
+    }
+    optional TruncationState truncationState = 7 [default = NONE];
+
+    optional int64 cTime = 8;
+    optional int64 mTime = 9;
+    optional int64 completionTime = 10;
+}
+
+/**
+ * Metadata Format for storing stream factory metadata information
+ */
+message BKStreamFactoryMetadataFormat {
+    optional string sZkServers = 1;
+    optional string bkZkServers = 2;
+    optional string bkLedgersPath = 3;
+}
+
+message StreamFactoryMetadataFormat {
+    enum Type {
+        BK = 1;
+    }
+    optional Type type = 1 [default = BK];
+    optional BKStreamFactoryMetadataFormat bkFormat = 2;
+}

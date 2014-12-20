@@ -27,6 +27,8 @@ import java.net.URL;
  */
 public class StreamConfiguration extends CompositeConfiguration {
 
+    private static final String ZK_SESSION_TIMEOUT_MS = "zk.session.timeout.ms";
+
     public StreamConfiguration() {
         super();
         addConfiguration(new SystemConfiguration());
@@ -63,6 +65,26 @@ public class StreamConfiguration extends CompositeConfiguration {
      */
     public void validate() throws ConfigurationException {
         // no-op
+    }
+
+    /**
+     * Get ZooKeeper Session Timeout In Millis.
+     *
+     * @return zookeeper session timeout in millis.
+     */
+    public int getZkSessionTimeoutMs() {
+        return getInt(ZK_SESSION_TIMEOUT_MS, 30000);
+    }
+
+    /**
+     * Set ZooKeeper Session Timeout In Millis.
+     *
+     * @param zkSessionTimeoutMs zookeeper session timeout in millis
+     * @return stream configuration
+     */
+    public StreamConfiguration setZkSessionTimeoutMs(int zkSessionTimeoutMs) {
+        setProperty(ZK_SESSION_TIMEOUT_MS, zkSessionTimeoutMs);
+        return this;
     }
 
 }
