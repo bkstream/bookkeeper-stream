@@ -26,13 +26,15 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.FutureFallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListenableScheduledFuture;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.commons.lang.StringUtils;
 
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -188,7 +190,8 @@ public class Scheduler {
     }
 
     protected final String name;
-    protected final ListeningExecutorService[] executors;
+    protected final ListeningScheduledExecutorService[] executors;
+    protected final Random random;
 
     private Scheduler(String name,
                       int numExecutors) {
@@ -196,13 +199,14 @@ public class Scheduler {
         Preconditions.checkArgument(numExecutors > 0, "Require positive value for num executors");
 
         this.name = name;
-        this.executors = new ListeningExecutorService[numExecutors];
+        this.executors = new ListeningScheduledExecutorService[numExecutors];
         for (int i = 0; i < numExecutors; i++) {
             StringBuilder sb = new StringBuilder(name);
             sb.append("-executor-").append(i).append("-%d");
             ThreadFactoryBuilder tfb = new ThreadFactoryBuilder().setNameFormat(sb.toString());
-            executors[i] = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(tfb.build()));
+            executors[i] = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor(tfb.build()));
         }
+        this.random = new Random(System.currentTimeMillis());
     }
 
     /**
@@ -211,11 +215,23 @@ public class Scheduler {
      * @param key ordering key to choose executor to run tasks.
      * @return executor service to run tasks ordering by <i>key</i>.
      */
-    private ListeningExecutorService getExecutor(Object key) {
+    private ListeningScheduledExecutorService getExecutor(Object key) {
         if (executors.length == 1) {
             return executors[0];
         }
         return executors[MathUtils.signSafeMod(Objects.hashCode(key), executors.length)];
+    }
+
+    /**
+     * Get an executor service to run tasks.
+     *
+     * @return executor service to run tasks.
+     */
+    private ListeningScheduledExecutorService getExecutor() {
+        if (executors.length == 1) {
+            return executors[0];
+        }
+        return executors[random.nextInt(executors.length)];
     }
 
     /**
@@ -233,6 +249,31 @@ public class Scheduler {
         return new OrderingListenableFuture<>(key, getExecutor(key).submit(task), this);
     }
 
+    /**
+     * Submit a <i>task</i> for execution and returns a Future representing the result for
+     * the task. All tasks submitted using same <i>key</i> would be executed in same thread.
+     *
+     * @param key submit key
+     * @param runnable task to execute
+     * @return future representing the pending result for the task.
+     */
+    public OrderingListenableFuture<?> submit(Object key, Runnable runnable) {
+        return new OrderingListenableFuture<>(key, getExecutor(key).submit(runnable), this);
+    }
+
+    /**
+     * Schedule task to run in given <i>delay</i>
+     *
+     * @param key submit key
+     * @param runnable task to schedule
+     * @param delay delay
+     * @param unit time unit of delay period
+     * @return future representing the schedule result for the task.
+     */
+    public <V> OrderingListenableFuture<?> schedule(Object key, Runnable runnable, long delay, TimeUnit unit) {
+        ListenableScheduledFuture<?> future = getExecutor(key).schedule(runnable, delay, unit);
+        return new OrderingListenableFuture<>(key, future, this);
+    }
 
     /**
      * Create an ordering future using ordering <i>key</i>.
@@ -243,5 +284,28 @@ public class Scheduler {
      */
     public <V> OrderingListenableFuture<V> createOrderingFuture(Object key, SettableFuture<V> future) {
         return new OrderingListenableFuture<>(key, future, this);
+    }
+
+    /**
+     * Submit a <i>task</i> for execution and returns a Future representing the result for
+     * the task.
+     *
+     * @param runnable task to execute
+     * @return future representing the pending result for the task.
+     */
+    public ListenableFuture<?> submit(Runnable runnable) {
+        return getExecutor().submit(runnable);
+    }
+
+    /**
+     * Schedule task to run in given <i>delay</i>
+     *
+     * @param runnable task to schedule
+     * @param delay delay
+     * @param unit time unit of delay period
+     * @return future representing the schedule result for the task.
+     */
+    public ListenableFuture<?> schedule(Runnable runnable, long delay, TimeUnit unit) {
+        return getExecutor().schedule(runnable, delay, unit);
     }
 }
