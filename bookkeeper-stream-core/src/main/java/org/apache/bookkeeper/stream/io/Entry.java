@@ -149,6 +149,24 @@ public class Entry {
         }
 
         /**
+         * Get the buffer size of the entry.
+         *
+         * @return buffer size of the entry.
+         */
+        public synchronized int getBufferSize() {
+            return this.recordBuffer.size();
+        }
+
+        /**
+         * Get number pending records in current entry builder.
+         *
+         * @return number pending records in current entry builder.
+         */
+        public synchronized int getNumPendingRecords() {
+            return resultList.size();
+        }
+
+        /**
          * Build entry.
          *
          * @return immutable entry representation
@@ -353,15 +371,18 @@ public class Entry {
     /**
      * Complete record futures.
      */
-    public void completeRecordFutures() {
+    public SSN completeRecordFutures(long entryId) {
         if (!recordFutureList.isPresent()) {
-            return;
+            return SSN.INVALID_SSN;
         }
         long slotId = 0L;
+        SSN ssn = SSN.INVALID_SSN;
         for (SettableFuture<SSN> future : recordFutureList.get()) {
-            future.set(SSN.of(segmentId, entryId, slotId));
+            ssn = SSN.of(segmentId, entryId, slotId);
+            future.set(ssn);
             ++slotId;
         }
+        return ssn;
     }
 
     /**

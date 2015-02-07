@@ -32,6 +32,10 @@ public abstract class StreamException extends Exception {
 
         // 4xx: invalid actions
         public static final int INVALID_SSN = 400;
+        public static final int INVALID_RECORD = 401;
+
+        // 5xx: backend actions
+        public static final int BK_EXCEPTION = 500;
 
         // 6xx:
         // unexpected situation
@@ -40,6 +44,12 @@ public abstract class StreamException extends Exception {
         // 10xx: metadata related exception
         public static final int METADATA_EXCEPTION = 1000;
         public static final int ZK_EXCEPTION = 1001;
+
+        // 11xx: writer related exception
+        public static final int WRITE_CANCELLED = 1100;
+
+        // 12xx: reader related exception
+        public static final int OUT_OF_ORDER_READ = 1200;
     }
 
     private final int code;
