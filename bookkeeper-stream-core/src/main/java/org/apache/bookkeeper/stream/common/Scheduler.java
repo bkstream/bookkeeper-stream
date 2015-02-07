@@ -308,4 +308,13 @@ public class Scheduler {
     public ListenableFuture<?> schedule(Runnable runnable, long delay, TimeUnit unit) {
         return getExecutor().schedule(runnable, delay, unit);
     }
+
+    /**
+     * Shutdown the scheduler
+     */
+    public void shutdown() {
+        for (ListeningScheduledExecutorService executor : executors) {
+            executor.shutdown();
+        }
+    }
 }
