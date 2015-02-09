@@ -422,4 +422,18 @@ public class Entry {
                 entryData.offset + ENTRY_HEADER_SIZE, numBytes)));
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Entry(");
+        sb.append("sid = ").append(segmentId).append(", ");
+        sb.append("eid = ").append(entryId).append(", ");
+        sb.append("records = ").append(numRecords).append(", ");
+        sb.append("bytes = ").append(numBytes).append(", ");
+        sb.append("last_num_records = ").append(lastNumRecords).append(", ");
+        sb.append("last_num_bytes = ").append(lastNumBytes).append(", ");
+        sb.append("flags = ").append(flags);
+        sb.append(")");
+        return sb.toString();
+    }
 }

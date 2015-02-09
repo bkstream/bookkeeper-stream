@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -149,6 +149,13 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         }
     }
 
+    private static enum State {
+        UNINITIALIZED,
+        INITIALIZED,
+        CLOSING,
+        CLOSED
+    }
+
     // stream configuration
     private final StreamConfiguration conf;
     private final int entryBufferSize;
@@ -169,8 +176,15 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
     private long lastNumBytes = 0L;
     private long numEntries = 0;
     private EntryBuilder curEntryBuilder;
-    private final Queue<Entry> pendingEntries = new ConcurrentLinkedQueue<>();
-    private final Queue<SettableFuture<SSN>> errorQueue = new ConcurrentLinkedQueue<>();
+    // queue of outgoing entries
+    private final Queue<Entry> pendingEntries =
+            new LinkedBlockingQueue<>();
+    // queue of entries added after writer in an error state
+    private final Queue<SettableFuture<SSN>> errorQueue =
+            new LinkedBlockingQueue<>();
+    // close future
+    private final Queue<SettableFuture<SSN>> closeFutures =
+            new LinkedBlockingQueue<>();
 
     // flush state
     private int lastBkResult = Code.OK;
@@ -180,7 +194,7 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
 
     // stream state
     private boolean inErrorState = false;
-    private boolean closed = false;
+    private State state = State.UNINITIALIZED;
 
     BKSegmentWriter(StreamConfiguration conf,
                     Segment segment,
@@ -195,13 +209,16 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         this.scheduler = scheduler;
         this.statsLogger = statsLogger;
         // settings
-        this.entryBufferSize = conf.getSegmentWriterEntryBufferSize();
-        this.commitDelayMs = conf.getSegmentWriterCommitDelayMs();
+        this.entryBufferSize = Math.max(0, conf.getSegmentWriterEntryBufferSize());
+        this.commitDelayMs = Math.max(0, conf.getSegmentWriterCommitDelayMs());
 
         // entry
         this.curEntryBuilder = nextEntryBuilder();
         // flush state
-        lastFlushedSSN = SSN.of(segmentId, -1L, -1L);
+        this.lastFlushedSSN = SSN.of(segmentId, -1L, -1L);
+
+        // writer state
+        this.state = State.INITIALIZED;
     }
 
     private EntryBuilder nextEntryBuilder() throws IOException {
@@ -244,7 +261,7 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
             return;
         }
 
-        if (closed) {
+        if (State.CLOSING == state || State.CLOSED == state) {
             if (pendingEntries.isEmpty()) {
                 future.setException(new WriteCancelledException(
                         "Writing record cancelled because segment " + segmentName + "@"
@@ -253,6 +270,11 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
                 errorQueue.add(future);
             }
             return;
+        }
+
+        if (logger.isTraceEnabled()) {
+            logger.trace("Adding record {} to segment {} @ {}",
+                    new Object[] { record, segmentName, streamName });
         }
 
         try {
@@ -285,8 +307,43 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
     private void flushIfNeeded() {
         if (null != curEntryBuilder &&
                 curEntryBuilder.getBufferSize() > entryBufferSize) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Trigger flushing current entry {} to segment {} @ {}" +
+                                " when its buffer size {} reached threshold {}",
+                        new Object[] { numEntries, segmentName, streamName,
+                                curEntryBuilder.getBufferSize(), entryBufferSize });
+            }
             flush0(false, null);
         }
+    }
+
+    /**
+     * Check the writer state and satisfy future (for flush and commit)
+     *
+     * @param future future representing an operation
+     * @return true if the future is satisfied, otherwise false.
+     */
+    private boolean checkWriterStateAndSatisfyFuture(SettableFuture<SSN> future) {
+        if (State.CLOSED == state) {
+            logger.info("Skip scheduling commit since writer of segment {} @ {} is already closed.",
+                    segmentName, streamName);
+            if (null != future) {
+                future.set(lastFlushedSSN);
+            }
+            return true;
+        }
+
+        if (State.CLOSING == state) {
+            // if the writer is closing, we won't commit any data.
+            // so register callback for closing to be completed
+            if (null != future) {
+                closeFutures.add(future);
+            }
+            errorOutEntriesIfNecessary(null);
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -295,6 +352,9 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         scheduler.submit(streamName, new Runnable() {
             @Override
             public void run() {
+                if (checkWriterStateAndSatisfyFuture(future)) {
+                    return;
+                }
                 flush0(false, future);
             }
         });
@@ -306,7 +366,7 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
      */
     private void flush0(boolean isCommitEntry,
                         SettableFuture<SSN> future) {
-        if (null == curEntryBuilder) {
+        if (null == curEntryBuilder || (!isCommitEntry && 0 == curEntryBuilder.getBufferSize())) {
             if (null != future) {
                 future.set(lastFlushedSSN);
             }
@@ -328,6 +388,12 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         // 3. flush current entry to bookkeeper
         AddEntryContext addCtx = new AddEntryContext(entry, future);
         EntryData entryData = entry.getEntryData();
+
+        if (logger.isTraceEnabled()) {
+            logger.trace("Flushing entry {} : {} to segment {} @ {}",
+                    new Object[] { numEntries, entry, segmentName, streamName });
+        }
+
         lh.asyncAddEntry(entryData.data, entryData.offset, entryData.len, this, addCtx);
 
         // 4. flushing an entry will commit any uncommitted data.
@@ -360,7 +426,7 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         scheduler.submit(streamName, new Runnable() {
             @Override
             public void run() {
-                commit(future);
+                commit0(future);
             }
         });
         return scheduler.createOrderingFuture(streamName, future);
@@ -370,10 +436,20 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
      * Commit any flushed data. After commit completed, those flushed data is readable
      * on reader side.
      */
-    private void commit(SettableFuture<SSN> future) {
+    private void commit0(SettableFuture<SSN> future) {
         isCommitScheduled = false;
+
+        if (checkWriterStateAndSatisfyFuture(future)) {
+            return;
+        }
+
         boolean hasPendingRecords = null != curEntryBuilder &&
                 curEntryBuilder.getNumPendingRecords() > 0;
+        if (logger.isTraceEnabled()) {
+            logger.trace("Committing flushed data in segment {} @ {} :" +
+                    " has_data_uncommitted = {}, has_pending_records = {}",
+                    new Object[] { segmentName, streamName, hasDataUncommitted, hasPendingRecords });
+        }
         if (hasDataUncommitted || hasPendingRecords) {
             flush0(!hasPendingRecords, future);
         } else {
@@ -388,12 +464,14 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
      */
     private void scheduleCommit() {
         if (isCommitScheduled) {
+            logger.trace("Skip scheduling commit since there is a commit ongoing for segment {} @ {}",
+                    segmentName, streamName);
             return;
         }
         scheduler.schedule(streamName, new Runnable() {
             @Override
             public void run() {
-                commit(null);
+                commit0(null);
             }
         }, commitDelayMs, TimeUnit.MILLISECONDS);
     }
@@ -412,7 +490,8 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
         });
     }
 
-    private void addComplete0(int rc, long entryId, AddEntryContext addCtx) {
+    private void addComplete0(final int rc, final long entryId,
+                              AddEntryContext addCtx) {
         if (Code.OK != lastBkResult) {
             // all pending entries are already error out.
             return;
@@ -428,6 +507,10 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
             if (addCtx.future != null) {
                 addCtx.future.set(lastFlushedSSN);
             }
+
+            if (State.CLOSING == state || State.CLOSED == state) {
+                errorOutEntriesIfNecessary(null);
+            }
         } else {
             lastBkResult = rc;
             BKException bkException = new BKException(rc,
@@ -437,19 +520,52 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
             // cancel current entry
             cancelCurrentEntry(bkException);
             if (addCtx.future != null) {
-                addCtx.future.setException(new BKException(rc,
-                        org.apache.bookkeeper.client.BKException.getMessage(rc)));
+                if (Code.LedgerClosedException == rc || Code.ClientClosedException == rc) {
+                    addCtx.future.set(lastFlushedSSN);
+                } else {
+                    addCtx.future.setException(new BKException(rc,
+                            org.apache.bookkeeper.client.BKException.getMessage(rc)));
+                }
             }
-        }
 
-        if ((inErrorState || closed) && pendingEntries.isEmpty()) {
-            WriteCancelledException wce = new WriteCancelledException(
-                    "Writing record cancelled because segment " + segmentName + "@"
-                    + streamName + " is : closed = " + closed + ", in error state = "
-                    + inErrorState);
-            SettableFuture<SSN> future;
-            while ((future = errorQueue.poll()) != null) {
-                future.setException(wce);
+            // close the writer if the ledger handle is in error state
+            SettableFuture<SSN> closeFuture = SettableFuture.create();
+            Futures.addCallback(closeFuture, new FutureCallback<SSN>() {
+                @Override
+                public void onSuccess(SSN result) {
+                    logger.info("Closed writer on segment {} of {} after encountered bk exception : rc = {}",
+                            new Object[] { segmentName, streamName, rc });
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    logger.info("Failed to close writer on segment {} of {} after encountered bk exception : rc = {}",
+                            new Object[] { segmentName, streamName, rc });
+                }
+            });
+            close0(closeFuture);
+        }
+    }
+
+    private void errorOutEntriesIfNecessary(Throwable closeException) {
+        if (!pendingEntries.isEmpty()) {
+            return;
+        }
+        // drain error queue
+        WriteCancelledException wce = new WriteCancelledException(
+                "Writing record cancelled because segment " + segmentName + "@"
+                + streamName + " is : state = " + state + ", in error state = "
+                + inErrorState);
+        SettableFuture<SSN> future;
+        while ((future = errorQueue.poll()) != null) {
+            future.setException(wce);
+        }
+        // drain close futures
+        while ((future = closeFutures.poll()) != null) {
+            if (null == closeException) {
+                future.set(lastFlushedSSN);
+            } else {
+                future.setException(closeException);
             }
         }
     }
@@ -510,55 +626,67 @@ public class BKSegmentWriter implements SegmentWriter, AddCallback {
     }
 
     private void close0(SettableFuture<SSN> closeFuture) {
-        if (closed) {
-            closeFuture.set(null);
+        closeFutures.add(closeFuture);
+        if (State.CLOSING == state || State.CLOSED == state) {
+            errorOutEntriesIfNecessary(null);
             return;
         }
-        closed = true;
+        state = State.CLOSING;
         if (Code.OK == lastBkResult) {
-            flushAndCloseLedger(closeFuture);
+            flushAndCloseLedger();
             return;
         }
         // segment is already in a bad state.
-        errorQueue.add(closeFuture);
+        errorOutEntriesIfNecessary(null);
+        state = State.CLOSED;
     }
 
     /**
      * Flush buffered records adn close ledger.
-     *
-     * @param closeFuture future representing the close result.
      */
-    private void flushAndCloseLedger(final SettableFuture<SSN> closeFuture) {
+    private void flushAndCloseLedger() {
         final SettableFuture<SSN> flushFuture = SettableFuture.create();
+        if (logger.isTraceEnabled()) {
+            logger.trace("Flushing buffered data to segment {} @ {} before closing ledger {}",
+                    new Object[] { segmentName, streamName, lh.getId() });
+        }
         flush0(false, flushFuture);
         Futures.addCallback(flushFuture, new FutureCallback<SSN>() {
             @Override
             public void onSuccess(SSN ssn) {
-                closeLedger(ssn, closeFuture);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Closing ledger {} for segment {} @ {} after flushing buffered data",
+                            new Object[] { lh.getId(), segmentName, streamName });
+                }
+                closeLedger();
             }
 
             @Override
             public void onFailure(Throwable t) {
-                closeFuture.setException(t);
+                errorOutEntriesIfNecessary(t);
+                state = State.CLOSED;
             }
         });
     }
 
     /**
      * Close the ledger.
-     *
-     * @param closeFuture future representing the close result.
      */
-    private void closeLedger(final SSN ssn, final SettableFuture<SSN> closeFuture) {
+    private void closeLedger() {
         lh.asyncClose(new CloseCallback() {
             @Override
             public void closeComplete(int rc, LedgerHandle lh, Object ctx) {
-                if (Code.OK != rc) {
-                    closeFuture.setException(new BKException(rc, "Failed to close ledger " + lh.getId() + " : "
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Finished closing ledger {} for segment {} @ {} : rc = {}",
+                            new Object[] { lh.getId(), segmentName, streamName, rc });
+                }
+                if (Code.OK != rc && Code.LedgerClosedException != rc) {
+                    errorOutEntriesIfNecessary(new BKException(rc, "Failed to close ledger " + lh.getId() + " : "
                             + org.apache.bookkeeper.client.BKException.getMessage(rc)));
                 } else {
-                    closeFuture.set(ssn);
+                    errorOutEntriesIfNecessary(null);
                 }
+                state = State.CLOSED;
             }
         }, null);
     }

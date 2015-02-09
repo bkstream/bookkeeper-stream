@@ -19,6 +19,7 @@
 package org.apache.bookkeeper.stream.segment;
 
 import com.google.common.util.concurrent.Futures;
+import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -27,6 +28,8 @@ import org.apache.bookkeeper.stream.SSN;
 import org.apache.bookkeeper.stream.common.Scheduler;
 import org.apache.bookkeeper.stream.common.Scheduler.OrderingListenableFuture;
 import org.apache.bookkeeper.stream.conf.StreamConfiguration;
+import org.apache.bookkeeper.stream.exceptions.BKException;
+import org.apache.bookkeeper.stream.exceptions.WriteCancelledException;
 import org.apache.bookkeeper.stream.io.Entry;
 import org.apache.bookkeeper.stream.io.Record;
 import org.apache.bookkeeper.stream.io.RecordReader;
@@ -39,6 +42,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.*;
 import static com.google.common.base.Charsets.*;
@@ -182,6 +186,133 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
         }
         assertEquals(numReads, numReads);
 
+        SSN lastSSN = writer.close().get();
+        assertEquals(SSN.of(segmentId, 0L, numRecords - 1), lastSSN);
+
+        // double close
+        lastSSN = writer.close().get();
+        assertEquals(SSN.of(segmentId, 0L, numRecords - 1), lastSSN);
+    }
+
+    @Test(timeout = 60000)
+    public void testWriteRecordsAfterClose() throws Exception {
+        StreamConfiguration conf = new StreamConfiguration();
+        conf.setSegmentWriterCommitDelayMs(0);
+        conf.setSegmentWriterEntryBufferSize(0);
+
+        String streamName = "test-write-records-after-close";
+        long segmentId = 1L;
+        Pair<LedgerHandle, Segment> segmentPair = createSegment(streamName, segmentId);
+
+        BKSegmentWriter writer = BKSegmentWriter.newBuilder()
+                .conf(conf)
+                .segment(segmentPair.getRight())
+                .ledgerHandle(segmentPair.getLeft())
+                .scheduler(scheduler)
+                .statsLogger(NullStatsLogger.INSTANCE)
+                .build();
+
+        // close ledger handle
         writer.close();
+
+        int numRecords = 3;
+        List<OrderingListenableFuture<SSN>> writeFutures = new ArrayList<>(numRecords);
+        for (int i = 0; i < numRecords; i++) {
+            Record record = Record.newBuilder()
+                    .setRecordId(i)
+                    .setData(("record-" + i).getBytes(UTF_8))
+                    .build();
+            writeFutures.add(writer.write(record));
+        }
+
+        for (OrderingListenableFuture<SSN> future : writeFutures) {
+            try {
+                future.get();
+                fail("Should fail writing record after writer is closed");
+            } catch (ExecutionException wce) {
+                Throwable cause = wce.getCause();
+                assertEquals(WriteCancelledException.class, cause.getClass());
+            }
+        }
+
+        assertEquals(SSN.of(segmentId, -1L, -1L), writer.flush().get());
+        assertEquals(SSN.of(segmentId, -1L, -1L), writer.commit().get());
+    }
+
+    @Test(timeout = 60000)
+    public void testOperationsOnErrorWriter() throws Exception {
+        StreamConfiguration conf = new StreamConfiguration();
+        conf.setSegmentWriterCommitDelayMs(999999000);
+        conf.setSegmentWriterFlushIntervalMs(999999000);
+        conf.setSegmentWriterEntryBufferSize(4096);
+
+        String streamName = "test-operations-on-error-writer";
+        long segmentId = 1L;
+        Pair<LedgerHandle, Segment> segmentPair = createSegment(streamName, segmentId);
+
+        BKSegmentWriter writer = BKSegmentWriter.newBuilder()
+                .conf(conf)
+                .segment(segmentPair.getRight())
+                .ledgerHandle(segmentPair.getLeft())
+                .scheduler(scheduler)
+                .statsLogger(NullStatsLogger.INSTANCE)
+                .build();
+
+        int numRecords = 5;
+        List<OrderingListenableFuture<SSN>> writeFutures = new ArrayList<>();
+        for (int i = 0; i < numRecords; i++) {
+            Record record = Record.newBuilder()
+                    .setRecordId(i)
+                    .setData(("record-" + i).getBytes(UTF_8))
+                    .build();
+            writeFutures.add(writer.write(record));
+        }
+
+        // close the ledger to fence writes
+        LedgerHandle openLh = bkc.openLedger(segmentPair.getLeft().getId(), digestType, passwd);
+        openLh.close();
+
+        OrderingListenableFuture<SSN> flushFuture = writer.flush();
+        assertFuture(flushFuture, Code.LedgerFencedException);
+        // checking write results
+        for (OrderingListenableFuture<SSN> future : writeFutures) {
+            assertFuture(future, Code.LedgerFencedException);
+        }
+
+        // write record to an error writer will be cancelled
+        Record record = Record.newBuilder()
+                .setRecordId(numRecords)
+                .setData(("record-" + numRecords).getBytes(UTF_8))
+                .build();
+        OrderingListenableFuture<SSN> writeFuture = writer.write(record);
+        assertFuture(writeFuture, WriteCancelledException.class);
+
+        // flush and commit will return the last flushed ssn
+        assertEquals(SSN.of(segmentId, -1L, -1L), writer.flush().get());
+        assertEquals(SSN.of(segmentId, -1L, -1L), writer.commit().get());
+        assertEquals(SSN.of(segmentId, -1L, -1L), writer.close().get());
+    }
+
+    static void assertFuture(OrderingListenableFuture<SSN> future, int expectedRc) throws InterruptedException {
+        try {
+            future.get();
+            fail("Should fail the operation since ledger handle is fenced");
+        } catch (ExecutionException ee) {
+            Throwable cause = ee.getCause();
+            assertEquals(BKException.class, cause.getClass());
+            BKException bke = (BKException) cause;
+            assertEquals(expectedRc, bke.getBkCode());
+        }
+    }
+
+    static void assertFuture(OrderingListenableFuture<SSN> future, Class<? extends Exception> expectedClass)
+        throws InterruptedException {
+        try {
+            future.get();
+            fail("Should cancel the operation since the writer is already in error state");
+        } catch (ExecutionException ee) {
+            Throwable cause = ee.getCause();
+            assertEquals(expectedClass, cause.getClass());
+        }
     }
 }
