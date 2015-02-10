@@ -18,6 +18,10 @@
  */
 package org.apache.bookkeeper.stream;
 
+import org.apache.bookkeeper.client.BookKeeper.DigestType;
+
+import static com.google.common.base.Charsets.UTF_8;
+
 /**
  * All constants definitions.
  */
@@ -30,5 +34,8 @@ public interface Constants {
     // GB
     public static final int GB = 1024 * MB;
 
+    // BookKeeper Constants
+    public static final byte[] BK_PASSWD = "bookkeeper.stream".getBytes(UTF_8);
+    public static final DigestType BK_DIGEST_TYPE = DigestType.CRC32;
 
 }

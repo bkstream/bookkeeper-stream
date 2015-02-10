@@ -29,7 +29,7 @@ import java.util.List;
  * Writer to write records into a stream.
  */
 @Beta
-public interface StreamWriter extends FutureCloseable {
+public interface StreamWriter extends FutureCloseable<Void> {
 
     /**
      * Get the stream name that the reader is reading from.

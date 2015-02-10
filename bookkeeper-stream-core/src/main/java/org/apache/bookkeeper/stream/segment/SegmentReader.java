@@ -16,31 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.bookkeeper.stream;
+package org.apache.bookkeeper.stream.segment;
 
 import com.google.common.annotations.Beta;
-import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.bookkeeper.stream.common.FutureCloseable;
-import org.apache.bookkeeper.stream.io.Record;
+import org.apache.bookkeeper.stream.cache.RecordCache;
+import org.apache.bookkeeper.stream.common.OrderingFutureCloseable;
 
 /**
- * Reader to read {@link Record}s from a given stream.
+ * Reader to read entries from a single segment.
  */
 @Beta
-public interface StreamReader extends FutureCloseable<Void> {
+public interface SegmentReader extends OrderingFutureCloseable<Void> {
+
+    public static interface Listener {
+        /**
+         * Trigger when the reader reaches end of segment.
+         */
+        void onEndOfSegment();
+
+        /**
+         * Trigger when the reader encountered error.
+         */
+        void onError();
+    }
 
     /**
-     * Get the stream name that the reader is reading from.
+     * Start reading entries from the segment.
      *
-     * @return stream name.
+     * @param recordCache record cache to receive read entries.
+     * @param listener listener on reader events
+     * @throws java.lang.IllegalStateException if the reader is already started.
      */
-    String getStreamName();
-
-    /**
-     * Read next record from the given stream. The future is satisfied when a record is available and readable.
-     *
-     * @return a future listening on the arrival of next record in the given stream.
-     */
-    ListenableFuture<Record> readNext();
+    void start(RecordCache recordCache, Listener listener);
 
 }

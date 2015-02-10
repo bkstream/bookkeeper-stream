@@ -18,14 +18,17 @@
  */
 package org.apache.bookkeeper.stream.segment;
 
+import com.google.common.annotations.Beta;
 import org.apache.bookkeeper.stream.SSN;
+import org.apache.bookkeeper.stream.common.OrderingFutureCloseable;
 import org.apache.bookkeeper.stream.common.Scheduler.OrderingListenableFuture;
 import org.apache.bookkeeper.stream.io.Record;
 
 /**
  * Writer to write records to a single segment.
  */
-public interface SegmentWriter {
+@Beta
+public interface SegmentWriter extends OrderingFutureCloseable<SSN> {
 
     /**
      * Write record to the segment

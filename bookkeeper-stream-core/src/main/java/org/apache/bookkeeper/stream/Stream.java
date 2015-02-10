@@ -26,7 +26,7 @@ import org.apache.bookkeeper.stream.common.FutureCloseable;
  * A stream is responsible for managing records.
  */
 @Beta
-public interface Stream extends FutureCloseable {
+public interface Stream extends FutureCloseable<Void> {
 
     /**
      * Get the stream name that the reader is reading from.

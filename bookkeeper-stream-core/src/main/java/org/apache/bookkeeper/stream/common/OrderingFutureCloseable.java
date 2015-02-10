@@ -18,10 +18,10 @@
  */
 package org.apache.bookkeeper.stream.common;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.bookkeeper.stream.common.Scheduler.OrderingListenableFuture;
 
-public interface FutureCloseable<V> {
+public interface OrderingFutureCloseable<V> {
 
-    ListenableFuture<V> close();
+    OrderingListenableFuture<V> close();
 
 }

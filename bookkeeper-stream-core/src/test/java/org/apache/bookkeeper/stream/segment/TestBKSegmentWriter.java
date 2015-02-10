@@ -20,22 +20,16 @@ package org.apache.bookkeeper.stream.segment;
 
 import com.google.common.util.concurrent.Futures;
 import org.apache.bookkeeper.client.BKException.Code;
-import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stream.SSN;
-import org.apache.bookkeeper.stream.common.Scheduler;
 import org.apache.bookkeeper.stream.common.Scheduler.OrderingListenableFuture;
 import org.apache.bookkeeper.stream.conf.StreamConfiguration;
-import org.apache.bookkeeper.stream.exceptions.BKException;
 import org.apache.bookkeeper.stream.exceptions.WriteCancelledException;
 import org.apache.bookkeeper.stream.io.Entry;
 import org.apache.bookkeeper.stream.io.Record;
 import org.apache.bookkeeper.stream.io.RecordReader;
-import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat;
-import org.apache.bookkeeper.stream.proto.DataFormats.StreamSegmentMetadataFormat.State;
-import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 
@@ -44,76 +38,20 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static org.apache.bookkeeper.stream.Constants.BK_DIGEST_TYPE;
+import static org.apache.bookkeeper.stream.Constants.BK_PASSWD;
 import static org.junit.Assert.*;
 import static com.google.common.base.Charsets.*;
 
 /**
  * Test Case for {@link org.apache.bookkeeper.stream.segment.BKSegmentWriter}
  */
-public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
-
-    private static class TestSegment implements Segment {
-
-        private final String streamName;
-        private final StreamSegmentMetadata segmentMetadata;
-
-        TestSegment(String streamName, StreamSegmentMetadata segmentMetadata) {
-            this.streamName = streamName;
-            this.segmentMetadata = segmentMetadata;
-        }
-
-        @Override
-        public String getStreamName() {
-            return streamName;
-        }
-
-        @Override
-        public StreamSegmentMetadata getSegmentMetadata() {
-            return segmentMetadata;
-        }
-
-        @Override
-        public void registerSegmentListener(Listener listener) {
-            // no-op
-        }
-    }
+public class TestBKSegmentWriter extends BKSegmentTestCase {
 
     private static final int NUM_BOOKIES = 3;
-    private final DigestType digestType = DigestType.CRC32;
-    private final byte[] passwd = "bk-segment-writer".getBytes(UTF_8);
-    private final Scheduler scheduler;
 
     public TestBKSegmentWriter() {
         super(NUM_BOOKIES);
-        scheduler = Scheduler.newBuilder()
-                .name("bk-segment-writer")
-                .numExecutors(4)
-                .build();
-    }
-
-    @Override
-    public void tearDown() throws Exception {
-        super.tearDown();
-        scheduler.shutdown();
-    }
-
-    private Pair<LedgerHandle, Segment> createSegment(String streamName, long segmentId)
-            throws Exception {
-        long curTime = System.currentTimeMillis();
-        LedgerHandle lh = this.bkc.createLedger(2, 2, 2, digestType, passwd);
-        StreamSegmentMetadataFormat.Builder metadataBuilder =
-                StreamSegmentMetadataFormat.newBuilder()
-                        .setSegmentId(segmentId)
-                        .setLedgerId(lh.getId())
-                        .setState(State.INPROGRESS)
-                        .setCTime(curTime)
-                        .setMTime(curTime);
-        StreamSegmentMetadata segmentMetadata = StreamSegmentMetadata.newBuilder()
-                .setSegmentName(StreamSegmentMetadata.segmentName(segmentId, true))
-                .setStreamSegmentMetadataFormatBuilder(metadataBuilder)
-                .build();
-        Segment segment = new TestSegment(streamName, segmentMetadata);
-        return Pair.of(lh, segment);
     }
 
     @Test(timeout = 60000)
@@ -125,7 +63,7 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
 
         String streamName = "test-write-records";
         long segmentId = 1L;
-        Pair<LedgerHandle, Segment> segmentPair = createSegment(streamName, segmentId);
+        Pair<LedgerHandle, Segment> segmentPair = createInprogressSegment(streamName, segmentId);
 
         BKSegmentWriter writer = BKSegmentWriter.newBuilder()
                 .conf(conf)
@@ -164,7 +102,7 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
         // entry is committed
         assertEquals(1L, segmentPair.getLeft().getLastAddConfirmed());
 
-        LedgerHandle openLh = this.bkc.openLedgerNoRecovery(segmentPair.getLeft().getId(), digestType, passwd);
+        LedgerHandle openLh = this.bkc.openLedgerNoRecovery(segmentPair.getLeft().getId(), BK_DIGEST_TYPE, BK_PASSWD);
         long lac = openLh.readLastConfirmed();
         assertEquals(0L, lac);
 
@@ -202,7 +140,7 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
 
         String streamName = "test-write-records-after-close";
         long segmentId = 1L;
-        Pair<LedgerHandle, Segment> segmentPair = createSegment(streamName, segmentId);
+        Pair<LedgerHandle, Segment> segmentPair = createInprogressSegment(streamName, segmentId);
 
         BKSegmentWriter writer = BKSegmentWriter.newBuilder()
                 .conf(conf)
@@ -248,7 +186,7 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
 
         String streamName = "test-operations-on-error-writer";
         long segmentId = 1L;
-        Pair<LedgerHandle, Segment> segmentPair = createSegment(streamName, segmentId);
+        Pair<LedgerHandle, Segment> segmentPair = createInprogressSegment(streamName, segmentId);
 
         BKSegmentWriter writer = BKSegmentWriter.newBuilder()
                 .conf(conf)
@@ -269,7 +207,7 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
         }
 
         // close the ledger to fence writes
-        LedgerHandle openLh = bkc.openLedger(segmentPair.getLeft().getId(), digestType, passwd);
+        LedgerHandle openLh = bkc.openLedger(segmentPair.getLeft().getId(), BK_DIGEST_TYPE, BK_PASSWD);
         openLh.close();
 
         OrderingListenableFuture<SSN> flushFuture = writer.flush();
@@ -293,26 +231,4 @@ public class TestBKSegmentWriter extends BookKeeperClusterTestCase {
         assertEquals(SSN.of(segmentId, -1L, -1L), writer.close().get());
     }
 
-    static void assertFuture(OrderingListenableFuture<SSN> future, int expectedRc) throws InterruptedException {
-        try {
-            future.get();
-            fail("Should fail the operation since ledger handle is fenced");
-        } catch (ExecutionException ee) {
-            Throwable cause = ee.getCause();
-            assertEquals(BKException.class, cause.getClass());
-            BKException bke = (BKException) cause;
-            assertEquals(expectedRc, bke.getBkCode());
-        }
-    }
-
-    static void assertFuture(OrderingListenableFuture<SSN> future, Class<? extends Exception> expectedClass)
-        throws InterruptedException {
-        try {
-            future.get();
-            fail("Should cancel the operation since the writer is already in error state");
-        } catch (ExecutionException ee) {
-            Throwable cause = ee.getCause();
-            assertEquals(expectedClass, cause.getClass());
-        }
-    }
 }
